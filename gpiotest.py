@@ -224,7 +224,13 @@ def getPinFunctionName(pin):
     return functions[GPIO.gpio_function(pin)]
 
 def getRaspiModel(argument):
-    #Detect Raspberry Pi model
+    #Detect Raspberry Pi model; prefer structured info when available
+    if isinstance(argument, dict):
+        model = argument.get("MODEL")
+        if model and model != "unknown":
+            return model
+        argument = argument.get("REVISION")
+
     switcher = {
         "0002": "Model B Revision 1.0 256Mb",
         "0003": "Model B Revision 1.0 + ECN0001 256Mb",
@@ -270,11 +276,26 @@ def getRaspiModel(argument):
         "d03114": "4 Model B 8Gb",
         "c03130": "Pi 400 4Gb",
         "b03140": "Compute Module 4 2Gb",
+        "902120": "Zero 2 W 512Mb",
+        "d03115": "4 Model B 8Gb",
+        "a03140": "Compute Module 4 1Gb",
+        "c03140": "Compute Module 4 4Gb",
+        "d03140": "Compute Module 4 8Gb",
+        "c04170": "5 Model B 4Gb",
+        "d04170": "5 Model B 8Gb",
     }
     return switcher.get(argument, "not supported")
 
 def getGpioNum(argument):
-    #Return number of GPIO lines
+    #Return number of GPIO lines; prefer structured info when available
+    if isinstance(argument, dict):
+        p1_revision = argument.get("P1_REVISION")
+        if p1_revision == 1:
+            return 17
+        if p1_revision in (2, 3):
+            return 26
+        argument = argument.get("REVISION")
+
     switcher = {
         "0002": 17,
         "0003": 17,
@@ -319,8 +340,15 @@ def getGpioNum(argument):
         "d03114": 26,
         "c03130": 26,
         "b03140": 26,
+        "902120": 26,
+        "d03115": 26,
+        "a03140": 26,
+        "c03140": 26,
+        "d03140": 26,
+        "c04170": 26,
+        "d04170": 26,
     }
-    return switcher.get(argument, 17)
+    return switcher.get(argument, 26)
 
 def initGpio(firstrun=0):
     curses.savetty()  #Save screen
@@ -381,14 +409,15 @@ try:
     termOff()
 
     #Detect Raspberry Pi model
-    RaspiModel = getRaspiModel(GPIO.RPI_INFO['REVISION'])
+    RaspiModel = getRaspiModel(GPIO.RPI_INFO)
     if (RaspiModel == "not supported"):
-        raise RuntimeError('GPIOTEST does not support this version of Raspberry PI. To add it, visit https://raspi.tv/2015/rpi-gpio-new-feature-gpio-rpi_info-replaces-gpio-rpi_revision')
+        print('Warning: Unknown Raspberry Pi revision {}; continuing with defaults.'.format(GPIO.RPI_INFO['REVISION']))
+        RaspiModel = 'Unknown Raspberry Pi'
 
     #Detect GPIO parameters
     #gpio_ch - array of GPIO lines numbers
     if gpio_num == 0:
-        gpio_num = getGpioNum(GPIO.RPI_INFO['REVISION'])
+        gpio_num = getGpioNum(GPIO.RPI_INFO)
 
     if (gpio_num == 17):
         gpio_ch = [0,1,4,7,8,9,10,11,14,15,17,18,21,22,23,24,25]
