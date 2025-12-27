@@ -335,7 +335,11 @@ def initGpio(firstrun=0):
     for i,channel in enumerate(gpio_ch):
         if not gpio_inout[i]:
             GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_DOWN if gpio_pud[i] == 0 else GPIO.PUD_UP)
-            GPIO.add_event_detect(channel, GPIO.BOTH, callback = gpio_callback, bouncetime = debounce)
+            try:
+                GPIO.add_event_detect(channel, GPIO.BOTH, callback = gpio_callback, bouncetime = debounce)
+            except RuntimeError as err:
+                # Some pins (e.g. already reserved by firmware/overlays) cannot register edge detection
+                SendToLog("GPIO " + str(channel) + ": edge detect disabled (" + str(err) + ")")
             gpio_state[i] = GPIO.input(channel) # Primary state
 
     curses.resetty()  # Restore screen
